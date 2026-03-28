@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SupportSaaS Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; background: #f5f7fb; color: #1f2937; }
+    .card { background: #fff; border-radius: 10px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    input, textarea, button, select { width: 100%; padding: 8px; margin-top: 8px; margin-bottom: 8px; }
+    button { background: #2563eb; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
+    button:hover { background: #1d4ed8; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .ticket { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin-top: 10px; }
+    .muted { color: #6b7280; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <h1>SupportSaaS (Project One Demo)</h1>
+  <p class="muted">Multi-tenant support ticket platform with async AI suggestion generation.</p>
+
+  <div class="row">
+    <div class="card">
+      <h3>Create Tenant</h3>
+      <input id="tenantName" placeholder="Tenant Name" />
+      <input id="tenantSlug" placeholder="tenant-slug" />
+      <button onclick="createTenant()">Create Tenant</button>
+    </div>
+    <div class="card">
+      <h3>Register User</h3>
+      <input id="regTenant" placeholder="Tenant Slug" />
+      <input id="regName" placeholder="Full Name" />
+      <input id="regEmail" placeholder="Email" />
+      <input id="regPassword" type="password" placeholder="Password" />
+      <button onclick="registerUser()">Register</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Login</h3>
+    <input id="loginEmail" placeholder="Email" />
+    <input id="loginPassword" type="password" placeholder="Password" />
+    <button onclick="login()">Login</button>
+    <p id="authStatus" class="muted">Not logged in</p>
+  </div>
+
+  <div class="card">
+    <h3>Create Ticket</h3>
+    <input id="ticketTitle" placeholder="Issue title" />
+    <textarea id="ticketDesc" placeholder="Describe customer issue"></textarea>
+    <select id="ticketPriority">
+      <option value="low">low</option>
+      <option value="medium" selected>medium</option>
+      <option value="high">high</option>
+    </select>
+    <button onclick="createTicket()">Create Ticket</button>
+    <button onclick="loadTickets()">Refresh Tickets</button>
+  </div>
+
+  <div class="card">
+    <h3>Tickets</h3>
+    <div id="tickets"></div>
+  </div>
+
+  <script>
+    const API = "/api/v1";
+    let token = "";
+
+    async function api(path, method = "GET", body = null) {
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers.Authorization = `Bearer ${token}`;
+      const res = await fetch(`${API}${path}`, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : null
+      });
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.detail || "Request failed");
+      }
+      return res.json();
+    }
+
+    async function createTenant() {
+      try {
+        await api("/tenants", "POST", {
+          name: document.getElementById("tenantName").value,
+          slug: document.getElementById("tenantSlug").value
+        });
+        alert("Tenant created");
+      } catch (e) { alert(e.message); }
+    }
+
+    async function registerUser() {
+      try {
+        await api("/auth/register", "POST", {
+          tenant_slug: document.getElementById("regTenant").value,
+          full_name: document.getElementById("regName").value,
+          email: document.getElementById("regEmail").value,
+          password: document.getElementById("regPassword").value
+        });
+        alert("User registered");
+      } catch (e) { alert(e.message); }
+    }
+
+    async function login() {
+      try {
+        const data = await api("/auth/login", "POST", {
+          email: document.getElementById("loginEmail").value,
+          password: document.getElementById("loginPassword").value
+        });
+        token = data.access_token;
+        document.getElementById("authStatus").textContent = "Logged in";
+        loadTickets();
+      } catch (e) { alert(e.message); }
+    }
+
+    async function createTicket() {
+      try {
+        await api("/tickets", "POST", {
+          title: document.getElementById("ticketTitle").value,
+          description: document.getElementById("ticketDesc").value,
+          priority: document.getElementById("ticketPriority").value
+        });
+        alert("Ticket created. AI suggestion will appear shortly.");
+        loadTickets();
+      } catch (e) { alert(e.message); }
+    }
+
+    async function loadTickets() {
+      if (!token) return;
+      try {
+        const tickets = await api("/tickets");
+        const container = document.getElementById("tickets");
+        container.innerHTML = "";
+        tickets.forEach(t => {
+          const item = document.createElement("div");
+          item.className = "ticket";
+          item.innerHTML = `
+            <strong>${t.title}</strong>
+            <div class="muted">status=${t.status}, priority=${t.priority}</div>
+            <p>${t.description}</p>
+            <p><strong>AI Suggestion:</strong> ${t.ai_suggestion || "Pending..."}</p>
+          `;
+          container.appendChild(item);
+        });
+      } catch (e) { alert(e.message); }
+    }
+  </script>
+</body>
+</html>
