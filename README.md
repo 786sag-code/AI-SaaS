@@ -1,6 +1,6 @@
-# SupportSaaS - Production-Ready CV Project One
+# SupportSaaS - Production-Ready Project
 
-This is an end-to-end, production-style implementation of the first project in your CV:
+This is an end-to-end, production-style implementation of the project:
 **AI-powered multi-tenant customer support SaaS**.
 
 ## What is included
